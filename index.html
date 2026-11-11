@@ -172,7 +172,10 @@ const shuffle = a => { a = a.slice(); for (let i=a.length-1;i>0;i--){const j=Mat
 function load(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } }
 function save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ toast("⚠️ التخزين ممتلئ · Storage full"); return false; } }
 
-let S = load(LS.state, null) || {lang:"both", names:{}, setup:false, prog:{}};
+let S = load(LS.state, null) || {lang:"both", prog:{}};
+// migration (v2): players are identified by grade only; drop any saved names / setup flag, keep progress (keyed p1/p2/p3)
+(function migrate(){ let ch = false; for (const k of ["names","setup"]) if (k in S) { delete S[k]; ch = true; }
+  S.prog = S.prog || {}; S.lang = S.lang || "both"; S.v = 2; if (ch) save(LS.state, S); })();
 let PACK = null;
 
 // ---------- language helpers ----------
@@ -353,16 +356,13 @@ function settings(){
    ${CONFIG.remoteUrl ? `<button class="btn" id="uon">🌐 ${H(["تحديث من الإنترنت","Update from the internet"])}</button>` : ""}
    <button class="btn ${CONFIG.remoteUrl ? "ghost" : ""}" id="ufile">📁 ${H(["تحديث من ملف","Update from a file"])}</button>
    <button class="btn ghost" id="unew">🎁 ${H(["شو الجديد","What's new"])}</button>
-   <div class="h2" style="margin-top:14px">✏️ ${H(["أسماء اللاعبين","Player names"])}</div>
-   ${PACK.children.map(c => `<input class="field" data-c="${c.id}" placeholder="${esc(T(c.label))}" value="${esc(S.names[c.id]||"")}">`).join("")}
-   <button class="btn" id="sv">${H(["حفظ","Save"])}</button>`);
+   <button class="btn ghost" onclick="this.closest('.sheet').remove()">${H(["إغلاق","Close"])}</button>`);
   s.querySelectorAll("#lng button").forEach(b => b.onclick = () => { S.lang = b.dataset.l; persist(); s.remove(); render(); settings(); });
   if (CONFIG.remoteUrl) s.querySelector("#uon").onclick = () => { s.remove(); updateOnline(); };
   s.querySelector("#ufile").onclick = () => { s.remove(); pickFile(); };
   s.querySelector("#unew").onclick = () => { s.remove(); showWhatsNew(); };
-  s.querySelector("#sv").onclick = () => { s.querySelectorAll("input[data-c]").forEach(i => S.names[i.dataset.c] = i.value.trim().slice(0,24)); persist(); s.remove(); render(); };
 }
-function dispName(cid){ const c = child(cid); return (S.names[cid] || "").trim() || (c ? T(c.label) : cid); }
+function dispName(cid){ const c = child(cid); return c ? T(c.label) : cid; }
 
 // ---------- avatars ----------
 const AV = {
@@ -383,7 +383,6 @@ function render(){
   document.body.className = "t-home";
   document.documentElement.dir = S.lang === "en" ? "ltr" : "rtl"; document.documentElement.lang = S.lang === "en" ? "en" : "ar";
   if (!PACK) return renderLock();
-  if (!S.setup) return renderSetup();
   const v = VIEW;
   if (v.v === "home") return renderHome();
   const ch = child(v.c); if (!ch) { VIEW = {v:"home"}; return renderHome(); }
@@ -408,15 +407,6 @@ function renderLock(){
       await ingestText(await r.text()); render(); } catch(e) { errToast(e); } };
   $("#uf").onclick = pickFile;
 }
-// ---------- first-run names ----------
-function renderSetup(){
-  app.innerHTML = `<div class="h1" style="margin-top:10px">👋 ${H(["هلا والله!","Welcome!"])}</div>
-   <p class="muted" style="margin:6px 0 10px">${H(["اكتب اسم كل لاعب (اختياري). الأسماء تنحفظ في هذا التلفون بس.","Type each player's name (optional). Names stay on this phone only."])}</p>
-   ${PACK.children.map(c => `<div class="kid ${c.theme}"><div class="av">${AV[c.avatar]||""}</div><div class="sp"><div class="small">${H(c.grade)}</div>
-     <input class="field" data-c="${c.id}" placeholder="${esc(T(c.label))}" value="${esc(S.names[c.id]||"")}"></div></div>`).join("")}
-   <button class="btn" id="go">${H(["يلا نبدأ","Let's go"])}</button>`;
-  $("#go").onclick = () => { app.querySelectorAll("input[data-c]").forEach(i => S.names[i.dataset.c] = i.value.trim().slice(0,24)); S.setup = true; persist(); render(); };
-}
 // ---------- home ----------
 function nextExam(ch){ const t = dnum(todayStr()); return ch.subjects.find(s => s.date && dnum(s.date) >= t) || null; }
 function renderHome(){
@@ -425,7 +415,7 @@ function renderHome(){
    <p class="muted" style="margin-top:4px">${H(UI.pick)}</p>
    ${PACK.children.map(c => { const p = P(c.id), n = nextExam(c);
      return `<button class="kid ${c.theme}" onclick="go({v:'child',c:'${c.id}'})"><div class="av">${AV[c.avatar]||""}</div><div class="sp">
-       <div class="kname auto" dir="auto">${esc(dispName(c.id))}</div><div class="small">${H(c.grade)}</div>
+       <div class="kname">${H(c.label)}</div>
        <div class="stats"><span class="pill">⭐ ${p.xp}</span><span class="pill">🔥 ${p.streak}</span>${n ? `<span class="pill">📅 ${esc(T(fmtDate(n.date)))}</span>` : ""}</div></div></button>`; }).join("")}
    <button class="btn" onclick="${CONFIG.remoteUrl ? "updateOnline()" : "pickFile()"}">🔄 ${H(UI.update)}</button>
    <p class="ver">${verLine()}</p>`;
@@ -453,7 +443,7 @@ function renderChild(ch){
       <div class="ic">${open ? s.icon : "🔒"}</div><div class="sp">${ch.theme === "pitch" ? `<span class="lvtag">LV ${i+1}</span> ` : ""}<b>${H(s.name)}</b>
       ${s.date ? `<div class="small muted">${esc(T(fmtDate(s.date)))}${past ? ` · <span class="done">${H(UI.done)}</span>` : ""}</div>` : ""}</div>
       ${ch.kids ? "" : `<div class="stars">${starsTxt(sp.stars)}</div>`}</button>`; }).join("");
-  app.innerHTML = `${topbar(`<span class="auto" dir="auto">${esc(dispName(ch.id))}</span>`, `<div style="width:56px;height:56px">${AV[ch.avatar]||""}</div>`)}
+  app.innerHTML = `${topbar(H(ch.label), `<div style="width:56px;height:56px">${AV[ch.avatar]||""}</div>`)}
    <div class="stats"><span class="pill">⭐ ${p.xp} XP</span><span class="pill">🔥 ${p.streak}</span><span class="pill">🏅 ${p.badges.length}</span>
    <button class="pill" onclick="go({v:'prog',c:'${ch.id}'})">📊 ${esc(T(UI.progress))}</button></div>
    <div class="dad">${H(dad)}</div>
