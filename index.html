@@ -43,6 +43,8 @@ body.t-pastel .back{background:#efe6f8}
 body.t-pastel .pill{background:#efe6f8}
 body.t-pond{--bg:#e3f6ff;--fg:#1b3a4b;--card:#fff;--ink:#1b3a4b;--accent:#ff8fab;--onaccent:#fff;--line:#9fd8f0;--soft:#fff8e1;background:linear-gradient(180deg,#bfe9ff,#e9fbff 60%,#fff6d6) fixed;color:#1b3a4b}
 body.t-pond .back,body.t-pond .pill{background:#fff}
+body.t-print{background:#fff;color:#1f1a2e}
+body.t-print #app{max-width:820px}
 body.t-home{background:linear-gradient(160deg,#2a1f3d,#3b2a5e 60%,#1f3b4d) fixed}
 /* home */
 .kid{display:flex;align-items:center;gap:14px;border-radius:26px;padding:14px;margin:14px 0;min-height:110px;width:100%;text-align:start;box-shadow:0 8px 24px rgba(0,0,0,.25)}
@@ -152,6 +154,38 @@ body.t-pastel .dad,body.t-pond .dad{background:rgba(255,255,255,.75)}
 .ver{font-size:.78em;opacity:.7;text-align:center;margin-top:18px;direction:ltr}
 .nw li{margin:6px 0 6px 0;list-style:none;padding:8px 12px;border-radius:12px;background:#f4effa}
 .hidden{display:none!important}
+/* cheat sheet («ورقة مختصرة») */
+.cheat{background:#fff;color:#1f1a2e;border-radius:20px;padding:14px 14px 12px;margin:10px 0;box-shadow:0 6px 20px rgba(0,0,0,.18);border-inline-start:8px solid var(--accent)}
+.cheat .ch-h{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.cheat .ch-ic{font-size:30px;line-height:1}
+.cheat .ch-t{font-weight:900;font-size:1.08em;line-height:1.3}
+.cheat .ch-d{font-size:.78em;font-weight:700;opacity:.7}
+.cheat dl{margin:0}
+.cheat .rw{display:grid;grid-template-columns:minmax(88px,31%) 1fr;gap:2px 10px;padding:5px 0;border-top:1px dashed #e2d9ee;font-size:.82em;line-height:1.45;break-inside:avoid}
+.cheat .eni{font-size:.78em;font-weight:600;opacity:.7;unicode-bidi:isolate}
+.cheat .rw:first-child{border-top:0}
+.cheat dt{font-weight:900;color:#4b2a7a}
+.t-pitch .cheat dt{color:#2a0f4f}
+.cheat dd{margin:0;font-weight:600}
+.cheat dd .en,.cheat dt .en{font-size:.86em}
+.cheat dd.ltr .ar,.cheat dd.ltr>.auto,.cheat dd.ltr>span[dir]{direction:ltr;unicode-bidi:isolate;text-align:end;display:block;font-variant-numeric:tabular-nums}
+html[dir=ltr] .cheat dd.ltr .ar,html[dir=ltr] .cheat dd.ltr>span{text-align:start}
+.cheat .tip{margin-top:10px;border-radius:14px;padding:9px 12px;background:#fff6d6;color:#4a3b00;font-weight:700;font-size:.88em}
+.cheat .src{margin-top:8px;font-size:.7em;opacity:.6;text-align:center}
+.cheat.kidsheet .kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px;margin-top:6px}
+.cheat.kidsheet .kt{border-radius:20px;background:#f3fbff;border:3px solid #bfe9ff;text-align:center;padding:10px 6px;font-weight:900}
+.cheat.kidsheet .kt .big{font-size:46px;line-height:1.15;display:block;direction:ltr}
+.cheat.kidsheet .tip{font-size:1.05em;text-align:center}
+.game.cheatbtn{grid-column:1/-1;flex-direction:row;gap:12px;min-height:64px;background:#fff6d6;color:#4a3b00}
+@media print{
+  @page{size:A4;margin:12mm}
+  body,body[class]{background:#fff!important;color:#000}
+  #app{max-width:none;padding:0}
+  .top,.noprint,.toast,.sheet,.conf,.goal{display:none!important}
+  .cheat{box-shadow:none;border-radius:0;margin:0 0 8mm;padding:0 0 0 0;border-inline-start:0;break-after:page}
+  .cheat .rw{font-size:10.5pt}
+  .cheat dt{color:#000}
+}
 </style>
 </head>
 <body class="t-home">
@@ -198,7 +232,7 @@ const UI = {
   allDone:["خلصت امتحانات الفصل الأول 🎉","Term 1 exams are done 🎉"], nextExam:["الامتحان الجاي","Next exam"],
   locked:["مقفل: خلّص اللي قبله","Locked: finish the one before"], done:["✔ خلص الامتحان","✔ Exam done"],
   len:["طول الجولة","Round length"], quick:["سريعة 5","Quick 5"], std:["عادية 10","Standard 10"], full:["كاملة","Full set"],
-  got:["فهمتها ✔","Got it ✔"], score:["النتيجة","Score"], review:["راجع الأفكار هذي","Ideas to review"],
+  got:["فهمتها ✔","Got it ✔"], cheat:["ورقة مختصرة","Cheat sheet"], cheats:["الأوراق المختصرة","Cheat sheets"], print:["اطبع","Print"], score:["النتيجة","Score"], review:["راجع الأفكار هذي","Ideas to review"],
 };
 const GAMES = {
   mix:["⚽","جولة منوعة","Mixed round"], mcq:["🔤","اختيار من متعدد","Multiple choice"], tf:["✅","صح ولا خطأ","True or false"],
@@ -385,13 +419,16 @@ function render(){
   if (!PACK) return renderLock();
   const v = VIEW;
   if (v.v === "home") return renderHome();
+  if (v.v === "cheatall") return renderCheatAll();
   const ch = child(v.c); if (!ch) { VIEW = {v:"home"}; return renderHome(); }
   document.body.className = "t-" + ch.theme;
   if (v.v === "child") return renderChild(ch);
   if (v.v === "prog") return renderProgress(ch);
+  if (v.v === "cheats") return renderCheats(ch);
   const s = subject(v.c, v.s); if (!s) { VIEW = {v:"child", c:v.c}; return renderChild(ch); }
   if (v.v === "subj") return renderSubject(ch, s);
   if (v.v === "cards") return renderCards(ch, s);
+  if (v.v === "cheat") return renderCheat(ch, s);
   if (v.v === "play") return renderPlay(ch, s);
   if (v.v === "end") return renderEnd(ch, s);
 }
@@ -403,7 +440,7 @@ function renderLock(){
    ${CONFIG.remoteUrl ? `<button class="btn" id="un">🔓 ${H(["فتح وتنزيل","Unlock & download"])}</button>` : ""}
    <button class="btn ghost" id="uf">📁 ${H(["عندي ملف تحديث","I have an update file"])}</button>`;
   if (CONFIG.remoteUrl) $("#un").onclick = async () => {
-    try { const r = await fetch(CONFIG.remoteUrl + "?t=" + Date.now(), {cache:"no-store"}); if (!r.ok) throw new Error("http");
+    try { const r = await fetch((CONFIG.localEnc || CONFIG.remoteUrl) + "?t=" + Date.now(), {cache:"no-store"}); if (!r.ok) throw new Error("http");
       await ingestText(await r.text()); render(); } catch(e) { errToast(e); } };
   $("#uf").onclick = pickFile;
 }
@@ -438,14 +475,17 @@ function renderChild(ch){
       <div class="small" style="font-weight:800;margin-top:2px">${d === 0 ? H(UI.today) : d === 1 ? H(UI.tomorrow) : H(UI.daysLeft)}</div></div></div>`; }
   const dad = rnd(ch.voice.start);
   const mission = ne || (ch.kids ? rnd(ch.subjects) : null);
-  const list = ch.subjects.map((s, i) => { const sp = SP(ch.id, s.id), open = unlocked(ch, i), past = s.date && dnum(s.date) < t;
+  const isPast = s => !!(s.date && dnum(s.date) < t);
+  const ordered = ch.subjects.filter(s => !isPast(s)).concat(ch.subjects.filter(isPast));
+  const list = ordered.map((s, n) => { const i = ch.subjects.indexOf(s), sp = SP(ch.id, s.id), open = unlocked(ch, i), past = isPast(s);
     return `<button class="lv ${open ? "" : "locked"} ${ne && s.id === ne.id ? "next" : ""}" ${open ? `onclick="go({v:'subj',c:'${ch.id}',s:'${s.id}'})"` : `onclick="toast(T(UI.locked))"`}>
-      <div class="ic">${open ? s.icon : "🔒"}</div><div class="sp">${ch.theme === "pitch" ? `<span class="lvtag">LV ${i+1}</span> ` : ""}<b>${H(s.name)}</b>
+      <div class="ic">${open ? s.icon : "🔒"}</div><div class="sp">${ch.theme === "pitch" ? `<span class="lvtag">${past ? "✔" : "LV " + (n+1)}</span> ` : ""}<b>${H(s.name)}</b>
       ${s.date ? `<div class="small muted">${esc(T(fmtDate(s.date)))}${past ? ` · <span class="done">${H(UI.done)}</span>` : ""}</div>` : ""}</div>
       ${ch.kids ? "" : `<div class="stars">${starsTxt(sp.stars)}</div>`}</button>`; }).join("");
   app.innerHTML = `${topbar(H(ch.label), `<div style="width:56px;height:56px">${AV[ch.avatar]||""}</div>`)}
    <div class="stats"><span class="pill">⭐ ${p.xp} XP</span><span class="pill">🔥 ${p.streak}</span><span class="pill">🏅 ${p.badges.length}</span>
-   <button class="pill" onclick="go({v:'prog',c:'${ch.id}'})">📊 ${esc(T(UI.progress))}</button></div>
+   <button class="pill" onclick="go({v:'prog',c:'${ch.id}'})">📊 ${esc(T(UI.progress))}</button>
+   ${ch.subjects.some(x => x.cheat) ? `<button class="pill" onclick="go({v:'cheats',c:'${ch.id}'})">📋 ${esc(T(UI.cheats))}</button>` : ""}</div>
    <div class="dad">${H(dad)}</div>
    ${ch.kids ? "" : `<div class="card">${cd}</div>`}
    ${mission ? `<div class="card mission"><div class="small muted">🎯 ${H(ch.choice && !ch.kids ? UI.suggestion : UI.mission)}</div>
@@ -473,7 +513,8 @@ function renderSubject(ch, s){
   const quick = ["mcq","tf","gap","rid"].some(k => ty.has(k));
   if (ch.kids) {
     app.innerHTML = `${topbar(`${s.icon} ${H(s.name)}`)}${(s.cards||[]).map(c => `<div class="card ex">${c.svg}<div class="h2">${H(c.h)}</div><p>${H(c.b)}</p></div>`).join("")}
-      <button class="btn" style="min-height:80px;font-size:1.3em" onclick="startRound('${ch.id}','${s.id}','pick')">🌟 ${H(GAMES.pick.slice(1))}</button>`;
+      <button class="btn" style="min-height:80px;font-size:1.3em" onclick="startRound('${ch.id}','${s.id}','pick')">🌟 ${H(GAMES.pick.slice(1))}</button>
+      ${s.cheat ? `<button class="btn ghost" onclick="go({v:'cheat',c:'${ch.id}',s:'${s.id}'})">📋 ${H(UI.cheat)}</button>` : ""}`;
     return;
   }
   app.innerHTML = `${topbar(`${s.icon} ${H(s.name)}`, `<div class="stars">${starsTxt(sp.stars)}</div>`)}
@@ -481,6 +522,7 @@ function renderSubject(ch, s){
    ${s.focus ? `<div class="dad small">📝 ${H(s.focus)}</div>` : ""}
    <div class="games">
      <button class="game wide" onclick="go({v:'cards',c:'${ch.id}',s:'${s.id}',i:0})"><span class="e">💡</span><span>${H(UI.understand)}${sp.cards ? " ✔" : ""}</span></button>
+     ${s.cheat ? `<button class="game cheatbtn" onclick="go({v:'cheat',c:'${ch.id}',s:'${s.id}'})"><span class="e">📋</span><span>${H(UI.cheat)}</span></button>` : ""}
      ${ch.choice ? `<div style="grid-column:1/-1"><div class="small muted">${H(UI.len)}</div><div class="seg">${[[5,UI.quick],[10,UI.std],[99,UI.full]].map(([n,l]) =>
         `<button class="${lenSel===n?"on":""}" onclick="VIEW.len=${n};render()">${esc(T(l))}</button>`).join("")}</div></div>` : ""}
      <button class="game wide" style="background:var(--card);color:var(--ink)" onclick="startRound('${ch.id}','${s.id}','mix')"><span class="e">${GAMES.mix[0]}</span><span>${H(GAMES.mix.slice(1))}</span></button>
@@ -502,6 +544,37 @@ function renderCards(ch, s){
     if (!last) { VIEW.i = i + 1; render(); window.scrollTo(0,0); return; }
     const sp = SP(ch.id, s.id); if (!sp.cards) { sp.cards = true; P(ch.id).xp += 5; touchStreak(ch.id); const g = checkBadges(ch.id); persist(); toast("+5 ⭐"); g.forEach(b => setTimeout(() => { toast(BADGES[b][0]+" "+T([BADGES[b][1],BADGES[b][2]])); confetti(40); }, 600)); }
     back(); };
+}
+
+// ---------- cheat sheet («ورقة مختصرة»): one screen, printable ----------
+function cheatHTML(ch, s){
+  const c = s.cheat; if (!c) return "";
+  const when = s.date ? `📅 ${esc(T(fmtDate(s.date)))}${s.date && dnum(s.date) < dnum(todayStr()) ? ` · ${H(UI.done)}` : ""}` : "";
+  if (ch.kids) return `<section class="cheat kidsheet"><div class="ch-h"><span class="ch-ic">${s.icon}</span><div class="ch-t">${H(s.name)}</div></div>
+    <div class="kgrid" style="grid-template-columns:repeat(${c.rows.length === 4 ? 2 : Math.min(c.rows.length, 3)},1fr)">${c.rows.map(r => `<div class="kt"><span class="big">${esc(r.e || r.v[0])}</span>${H(r.k)}</div>`).join("")}</div>
+    <div class="tip">${H(c.tip)}</div></section>`;
+  return `<section class="cheat"><div class="ch-h"><span class="ch-ic">${s.icon}</span><div class="sp"><div class="ch-t">${Hi(s.name)}</div>
+    <div class="ch-d">${esc(T(ch.grade || ch.label))}${when ? " · " + when : ""}</div></div></div>
+    <dl>${c.rows.map(r => `<div class="rw"><dt>${H(r.k)}</dt><dd class="${r.ltr ? "ltr" : ""}">${H(r.v)}</dd></div>`).join("")}</dl>
+    <div class="tip">💡 ${H(c.tip)}</div>
+    <div class="src">${H(["من أوراق المقرر والمراجعة. افهمها قبل لا تحفظها.","From the school portion and review sheets. Understand first, then remember."])}</div></section>`;
+}
+function Hi(x){ const [a,e] = pair(x); if (a === e || S.lang !== "both") return esc(T(x)); return `${esc(a)} <span class="eni">· ${esc(e)}</span>`; }   // one line, both languages
+function doPrint(){ try { if (window.RevPrint && RevPrint.print) { RevPrint.print(document.title); return; } } catch(e) {} window.print(); }
+function cheatOrder(ch){ const t = dnum(todayStr()), past = s => !!(s.date && dnum(s.date) < t);
+  return ch.subjects.filter(s => s.cheat && !past(s)).concat(ch.subjects.filter(s => s.cheat && past(s))); }
+function renderCheats(ch){
+  app.innerHTML = `${topbar(`📋 ${H(UI.cheats)}`, `<button class="pill noprint" onclick="doPrint()">🖨️ ${esc(T(UI.print))}</button>`)}${cheatOrder(ch).map(s => cheatHTML(ch, s)).join("")}`;
+}
+function renderCheatAll(){
+  document.body.className = "t-print";
+  app.innerHTML = PACK.children.map(ch => cheatOrder(ch).map(s => cheatHTML(ch, s)).join("")).join("");
+}
+function renderCheat(ch, s){
+  if (!s.cheat) { back(); return; }
+  app.innerHTML = `${topbar(`📋 ${H(UI.cheat)}`, `<button class="pill noprint" onclick="doPrint()">🖨️ ${esc(T(UI.print))}</button>`)}${cheatHTML(ch, s)}
+   <div class="row noprint"><button class="btn ghost" style="flex:1" onclick="back()">${H(UI.back)}</button>
+   <button class="btn" style="flex:1" onclick="startRound('${ch.id}','${s.id}','${ch.kids ? "pick" : "mix"}')">${ch.kids ? "🌟" : "⚽"} ${H(UI.play)}</button></div>`;
 }
 
 // ---------- game engine ----------
@@ -655,8 +728,14 @@ function renderEnd(ch, s){
   else if (BUILTIN) PACK = BUILTIN;
   else if (stored && stored.format === "rt1-pack") PACK = stored;
   try { history.replaceState({d:0}, ""); } catch(e) {}
+  if (CONFIG.startView) VIEW = {v: CONFIG.startView};
   render();
-  // No automatic network calls: online updates only happen when the user taps «تحديث».
+  // App build: the encrypted pack ships inside the app. If it is newer than the saved copy and the key is saved, open it silently (local file, no internet).
+  if (CONFIG.localEnc && PACK && load(LS.key, null)) {
+    try { const r = await fetch(CONFIG.localEnc, {cache:"no-store"}); if (r.ok) { const env = await r.json();
+      const np = await openEnvelope(env, false); if (applyPack(np, true)) render(); } } catch(e) {}
+  }
+  // No automatic internet calls: online updates only happen when the user taps «تحديث».
 })();
 </script>
 </body>
